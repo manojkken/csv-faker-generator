@@ -1,0 +1,38 @@
+{
+  "name": "csv-faker-generator",
+  "version": "1.0.0",
+  "description": "Generate CSV files with fake data using custom headers (UUID, names, emails, addresses, etc.)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "csv-faker": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "test": "node dist/example.js"
+  },
+  "keywords": [
+    "csv",
+    "faker",
+    "fake-data",
+    "generator",
+    "uuid",
+    "csv-generator",
+    "mock-data"
+  ],
+  "author": "",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "dependencies": {
+    "@faker-js/faker": "^10.1.0",
+    "csv-writer": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}
