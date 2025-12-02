@@ -1,7 +1,7 @@
 {
   "name": "csv-faker-generator",
-  "version": "1.0.0",
-  "description": "Generate CSV files with fake data using custom headers (UUID, names, emails, addresses, etc.)",
+  "version": "2.0.0",
+  "description": "Generate CSV files with fake data: 27+ data types, alphanumeric strings, pick from custom values, formula fields, decimal precision, custom delimiters. Perfect for testing and prototyping.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -27,7 +27,17 @@
     "generator",
     "uuid",
     "csv-generator",
-    "mock-data"
+    "mock-data",
+    "alphanumeric",
+    "formula",
+    "calculated-fields",
+    "enum",
+    "pick",
+    "delimiter",
+    "test-data",
+    "prototyping",
+    "iban",
+    "banking"
   ],
   "author": "Manoj Kengudelu",
   "license": "MIT",

@@ -3,3 +3,7 @@ dist/
 *.log
 .DS_Store
 *.tgz
+
+# Exclude generated CSV files
+*.csv
+!example.csv
