@@ -26,22 +26,33 @@ export type DataType =
   | 'password'
   | 'iban'
   | 'bic'
-  | 'bankName';
+  | 'bankName'
+  | 'alphanumeric'
+  | 'pick'
+  | 'formula';
 
 export interface ColumnDefinition {
   header: string;
   type: DataType;
   min?: number;
   max?: number;
+  length?: number;
+  uppercase?: boolean;
+  values?: any[];
+  formula?: (row: Record<string, any>) => any;
+  decimals?: number;
 }
 
 export interface GenerateOptions {
   columns: ColumnDefinition[];
   rows: number;
   output: string;
+  delimiter?: string;
 }
 
-function generateValue(type: DataType, min?: number, max?: number): string | number | boolean {
+function generateValue(column: ColumnDefinition, row?: Record<string, any>): string | number | boolean {
+  const { type, min, max, length, uppercase, values, decimals } = column;
+
   switch (type) {
     case 'uuid':
       return faker.string.uuid();
@@ -71,8 +82,14 @@ function generateValue(type: DataType, min?: number, max?: number): string | num
       return faker.company.name();
     case 'jobTitle':
       return faker.person.jobTitle();
-    case 'number':
-      return faker.number.int({ min: min || 1, max: max || 1000 });
+    case 'number': {
+      const num = faker.number.int({ min: min || 1, max: max || 1000 });
+      if (decimals !== undefined) {
+        const float = faker.number.float({ min: min || 1, max: max || 1000, fractionDigits: decimals });
+        return parseFloat(float.toFixed(decimals));
+      }
+      return num;
+    }
     case 'date':
       return faker.date.recent().toISOString();
     case 'boolean':
@@ -91,13 +108,33 @@ function generateValue(type: DataType, min?: number, max?: number): string | num
       return faker.finance.bic();
     case 'bankName':
       return faker.company.name() + ' Bank';
+    case 'alphanumeric': {
+      const len = length || 10;
+      let result = faker.string.alphanumeric(len);
+      if (uppercase) {
+        result = result.toUpperCase();
+      }
+      return result;
+    }
+    case 'pick': {
+      if (!values || values.length === 0) {
+        throw new Error('pick type requires values array');
+      }
+      return faker.helpers.arrayElement(values);
+    }
+    case 'formula': {
+      if (!column.formula || !row) {
+        throw new Error('formula type requires formula function and row context');
+      }
+      return column.formula(row);
+    }
     default:
       return faker.lorem.word();
   }
 }
 
 export async function generateCSV(options: GenerateOptions): Promise<void> {
-  const { columns, rows, output } = options;
+  const { columns, rows, output, delimiter = ',' } = options;
 
   const csvWriter = createObjectCsvWriter({
     path: output,
@@ -105,14 +142,28 @@ export async function generateCSV(options: GenerateOptions): Promise<void> {
       id: col.header,
       title: col.header,
     })),
+    fieldDelimiter: delimiter,
   });
 
   const records = [];
+
   for (let i = 0; i < rows; i++) {
     const record: Record<string, any> = {};
+
+    // First pass: generate non-formula columns
     for (const column of columns) {
-      record[column.header] = generateValue(column.type, column.min, column.max);
+      if (column.type !== 'formula') {
+        record[column.header] = generateValue(column, record);
+      }
     }
+
+    // Second pass: generate formula columns (they can reference other columns)
+    for (const column of columns) {
+      if (column.type === 'formula') {
+        record[column.header] = generateValue(column, record);
+      }
+    }
+
     records.push(record);
   }
 
@@ -133,7 +184,7 @@ export function parseColumnString(columnStr: string): ColumnDefinition {
     'uuid', 'name', 'firstName', 'lastName', 'title', 'email', 'phone',
     'address', 'secondaryAddress', 'city', 'country', 'zipCode', 'company', 'jobTitle',
     'number', 'date', 'boolean', 'url', 'ip', 'username', 'password',
-    'iban', 'bic', 'bankName'
+    'iban', 'bic', 'bankName', 'alphanumeric', 'pick'
   ];
 
   if (!validTypes.includes(type)) {
