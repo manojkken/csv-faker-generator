@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Optional `from` / `to` ISO date bounds and `dateFormat` (`iso` | `date`) for the `date` type; CLI accepts `header:date:from|to`. (#16)
 - CLI support for `alphanumeric` `length` and `uppercase` via `header:alphanumeric[:length][:upper]` syntax. (#17)
 - CLI `-o -` writes generated data to stdout (CSV via stringifier; JSON/NDJSON via `process.stdout`). Status line goes to stderr (`… to stdout`) so pipes stay clean, and closing the pipe early (e.g. `| head`) exits cleanly instead of crashing with EPIPE. (#18)
 

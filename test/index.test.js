@@ -74,6 +74,43 @@ test('pick only returns supplied values', async () => {
   for (const [status] of rows) assert.ok(values.includes(status), `unexpected value: ${status}`);
 });
 
+test('date stays within from/to range', async () => {
+  const from = '2024-01-01T00:00:00.000Z';
+  const to = '2024-12-31T23:59:59.999Z';
+  const { rows } = await generate([{ header: 'created', type: 'date', from, to }], { rows: 50 });
+  const fromMs = Date.parse(from);
+  const toMs = Date.parse(to);
+  for (const [created] of rows) {
+    const ms = Date.parse(created);
+    assert.ok(!Number.isNaN(ms), `invalid date: ${created}`);
+    assert.ok(ms >= fromMs && ms <= toMs, `date out of range: ${created}`);
+  }
+});
+
+test('dateFormat date outputs YYYY-MM-DD within range', async () => {
+  const from = '2023-06-01';
+  const to = '2023-06-30';
+  const { rows } = await generate(
+    [{ header: 'birthday', type: 'date', from, to, dateFormat: 'date' }],
+    { rows: 50 },
+  );
+  for (const [birthday] of rows) {
+    assert.match(birthday, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(birthday >= from && birthday <= to, `date out of range: ${birthday}`);
+  }
+});
+
+test('date with only one bound throws', async () => {
+  await assert.rejects(
+    generate([{ header: 'created', type: 'date', from: '2024-01-01' }]),
+    /requires both from and to/,
+  );
+  await assert.rejects(
+    generate([{ header: 'created', type: 'date', to: '2024-12-31' }]),
+    /requires both from and to/,
+  );
+});
+
 test('pick without values throws', async () => {
   await assert.rejects(generate([{ header: 'x', type: 'pick' }]), /requires values/);
 });
@@ -178,6 +215,21 @@ test('parseColumnString parses pick values including colons', () => {
   });
 });
 
+test('parseColumnString parses date ranges', () => {
+  assert.deepEqual(parseColumnString('created:date:2024-01-01|2024-12-31'), {
+    header: 'created',
+    type: 'date',
+    from: '2024-01-01',
+    to: '2024-12-31',
+  });
+  assert.deepEqual(parseColumnString('created:date: 2024-01-01 | 2024-12-31 '), {
+    header: 'created',
+    type: 'date',
+    from: '2024-01-01',
+    to: '2024-12-31',
+  });
+});
+
 test('parseColumnString parses alphanumeric length and upper', () => {
   assert.deepEqual(parseColumnString('sku:alphanumeric'), { header: 'sku', type: 'alphanumeric' });
   assert.deepEqual(parseColumnString('sku:alphanumeric:12'), {
@@ -203,6 +255,8 @@ test('parseColumnString rejects bad input', () => {
   assert.throws(() => parseColumnString('id:nope'), /Invalid data type/);
   assert.throws(() => parseColumnString('status:pick'), /pick type.*requires values/);
   assert.throws(() => parseColumnString('status:pick: | '), /pick type.*requires values/);
+  assert.throws(() => parseColumnString('created:date:2024-01-01'), /date type.*requires from\|to/);
+  assert.throws(() => parseColumnString('created:date: | '), /date type.*requires from\|to/);
   assert.throws(() => parseColumnString('sku:alphanumeric:0'), /alphanumeric.*positive integer/);
   assert.throws(() => parseColumnString('sku:alphanumeric:-3'), /alphanumeric.*positive integer/);
   assert.throws(() => parseColumnString('sku:alphanumeric:abc'), /alphanumeric.*positive integer/);
@@ -318,6 +372,25 @@ test('CLI accepts pick values', () => {
   assert.equal(values.length, 10);
   for (const value of values) {
     assert.ok(['active', 'inactive', 'pending'].includes(value));
+  }
+});
+
+test('CLI accepts date ranges', () => {
+  const { execFileSync } = require('node:child_process');
+  const output = path.join(tmpDir, 'cli-date.csv');
+  execFileSync(process.execPath, [
+    path.join(__dirname, '..', 'dist', 'cli.js'),
+    '-c', 'created:date:2024-01-01|2024-12-31', '-r', '20', '-o', output,
+  ]);
+  const [header, ...values] = fs.readFileSync(output, 'utf8').trim().split('\n');
+  assert.equal(header, 'created');
+  assert.equal(values.length, 20);
+  const fromMs = Date.parse('2024-01-01');
+  const toMs = Date.parse('2024-12-31');
+  for (const value of values) {
+    const ms = Date.parse(value);
+    assert.ok(!Number.isNaN(ms), `invalid date: ${value}`);
+    assert.ok(ms >= fromMs && ms <= toMs, `date out of range: ${value}`);
   }
 });
 

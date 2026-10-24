@@ -44,6 +44,9 @@ export interface ColumnDefinition {
   values?: any[];
   formula?: (row: Record<string, any>) => any;
   decimals?: number;
+  from?: string;
+  to?: string;
+  dateFormat?: 'iso' | 'date';
 }
 
 export interface GenerateOptions {
@@ -55,8 +58,15 @@ export interface GenerateOptions {
   seed?: number;
 }
 
+function formatDate(value: Date, dateFormat: 'iso' | 'date' = 'iso'): string {
+  if (dateFormat === 'date') {
+    return value.toISOString().slice(0, 10);
+  }
+  return value.toISOString();
+}
+
 function generateValue(column: ColumnDefinition, row?: Record<string, any>): string | number | boolean {
-  const { type, min, max, length, uppercase, values, decimals } = column;
+  const { type, min, max, length, uppercase, values, decimals, from, to, dateFormat } = column;
 
   switch (type) {
     case 'uuid':
@@ -95,8 +105,15 @@ function generateValue(column: ColumnDefinition, row?: Record<string, any>): str
       }
       return num;
     }
-    case 'date':
-      return faker.date.recent().toISOString();
+    case 'date': {
+      if ((from == null) !== (to == null)) {
+        throw new Error('date type requires both from and to when a range is specified');
+      }
+      const value = from != null && to != null
+        ? faker.date.between({ from, to })
+        : faker.date.recent();
+      return formatDate(value, dateFormat);
+    }
     case 'boolean':
       return faker.datatype.boolean();
     case 'url':
@@ -245,6 +262,18 @@ export function parseColumnString(columnStr: string): ColumnDefinition {
       throw new Error(`pick type for column "${header}" requires values after the second colon, separated by |`);
     }
     return { header, type, values };
+  }
+
+  if (type === 'date' && parts.length > 2) {
+    const bounds = parts.slice(2)
+      .join(COLUMN_DEFINITION_SEPARATOR)
+      .split(PICK_VALUES_SEPARATOR)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    if (bounds.length !== 2) {
+      throw new Error(`date type for column "${header}" requires from|to ISO dates after the second colon`);
+    }
+    return { header, type, from: bounds[0], to: bounds[1] };
   }
 
   if (type === 'alphanumeric') {

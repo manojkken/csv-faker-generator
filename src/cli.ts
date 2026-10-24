@@ -21,6 +21,7 @@ Usage:
 Options:
   --columns, -c    Column definitions (format: header:type,header:type,...)
                     For pick values, use header:pick:value1|value2 (quote the argument)
+                    For date ranges, use header:date:from|to (ISO dates, quote the argument)
                     For alphanumeric, use header:alphanumeric[:length][:upper]
   --rows, -r       Number of rows to generate (default: 10)
   --output, -o     Output file path (default: output.csv). Use - for stdout
@@ -35,7 +36,7 @@ Data Types:
   number, date, boolean, url, ip, username, password, iban, bic,
   bankName, alphanumeric, pick
 
-  Note: formula requires programmatic usage. See README for examples.
+  Note: dateFormat and formula require programmatic usage. See README for examples.
 
 Examples:
   csv-faker -c id:uuid,name:name,email:email -r 100 -o users.csv
@@ -43,6 +44,7 @@ Examples:
   csv-faker --columns "id:uuid,company:company,city:city" --rows 20 --output companies.csv
   csv-faker -c id:uuid,name:name,email:email --delimiter ";" -r 50 -o contacts.csv
   csv-faker -c 'id:uuid,status:pick:active|inactive|pending' -r 10
+  csv-faker -c 'id:uuid,created:date:2024-01-01|2024-12-31' -r 10
   csv-faker -c 'sku:alphanumeric:12,code:alphanumeric:8:upper' -r 10
   csv-faker -c id:uuid,name:name -r 50 -o users.json
   csv-faker -c id:uuid,name:name -r 50 -f ndjson -o users.data
