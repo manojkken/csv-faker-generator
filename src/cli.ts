@@ -4,6 +4,10 @@ import { generateCSV, parseColumnString, ColumnDefinition } from './index';
 import * as path from 'node:path';
 
 const args = process.argv.slice(2);
+const optionNames = new Set([
+  '--columns', '-c', '--rows', '-r', '--output', '-o', '--format', '-f',
+  '--delimiter', '-d', '--seed', '-s', '--help', '-h',
+]);
 
 // Exit quietly when the reader closes the pipe early (e.g. `-o - | head`).
 process.stdout.on('error', (err: NodeJS.ErrnoException) => {
@@ -54,6 +58,16 @@ Examples:
 `);
 }
 
+function readOptionValue(option: string, value: string | undefined, allowDashValue = false): string {
+  if (value === undefined || optionNames.has(value)) {
+    throw new Error(`${option} requires a value`);
+  }
+  if (value.startsWith('--') || (!allowDashValue && /^-[A-Za-z]$/.test(value))) {
+    throw new Error(`Unknown option: ${value}. Run with --help to see available options.`);
+  }
+  return value;
+}
+
 function parseArgs(): { columns: ColumnDefinition[]; rows: number; output: string; format?: 'csv' | 'json' | 'ndjson'; delimiter?: string; seed?: number } {
   let columnsStr = '';
   let rows = 10;
@@ -69,35 +83,37 @@ function parseArgs(): { columns: ColumnDefinition[]; rows: number; output: strin
       showHelp();
       process.exit(0);
     } else if (arg === '--columns' || arg === '-c') {
-      columnsStr = args[++i];
+      columnsStr = readOptionValue('--columns', args[++i]);
     } else if (arg === '--rows' || arg === '-r') {
-      rows = Number(args[++i]);
+      rows = Number(readOptionValue('--rows', args[++i], true));
       if (!Number.isInteger(rows) || rows < 1) {
         console.error('Error: rows must be a positive integer');
         process.exit(1);
       }
     } else if (arg === '--output' || arg === '-o') {
-      output = args[++i];
+      output = readOptionValue('--output', args[++i], true);
     } else if (arg === '--format' || arg === '-f') {
-      const value = args[++i];
+      const value = readOptionValue('--format', args[++i]);
       if (value !== 'csv' && value !== 'json' && value !== 'ndjson') {
         throw new Error(`Invalid format: ${value}. Expected csv, json, or ndjson`);
       }
       format = value;
     } else if (arg === '--delimiter' || arg === '-d') {
-      delimiter = args[++i];
+      delimiter = readOptionValue('--delimiter', args[++i], true);
       // Handle common escape sequences
       if (delimiter === '\\t') {
         delimiter = '\t';
       }
     } else if (arg === '--seed' || arg === '-s') {
-      const value = args[++i];
+      const value = readOptionValue('--seed', args[++i], true);
       const parsedSeed = Number(value);
       if (!value?.trim() || !Number.isInteger(parsedSeed)) {
         console.error('Error: seed must be an integer');
         process.exit(1);
       }
       seed = parsedSeed;
+    } else if (arg.startsWith('-')) {
+      throw new Error(`Unknown option: ${arg}. Run with --help to see available options.`);
     }
   }
 

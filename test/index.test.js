@@ -303,7 +303,7 @@ for (const option of ['--rows', '-r', '--seed', '-s']) {
     const { spawnSync } = require('node:child_process');
     const cli = path.join(__dirname, '..', 'dist', 'cli.js');
     const isRows = option === '--rows' || option === '-r';
-    const invalidValues = [isRows ? '10abc' : '42abc', '1.5', 'NaN', 'Infinity', '', '   ', undefined, '--output'];
+    const invalidValues = [isRows ? '10abc' : '42abc', '1.5', 'NaN', 'Infinity', '', '   ', undefined];
     if (isRows) invalidValues.push('0', '-1');
 
     for (const value of invalidValues) {
@@ -313,13 +313,35 @@ for (const option of ['--rows', '-r', '--seed', '-s']) {
         if (value !== undefined) args.push(value);
         const result = spawnSync(process.execPath, args, { encoding: 'utf8' });
         assert.equal(result.status, 1, result.stderr);
-        assert.match(result.stderr, isRows ? /rows must be a positive integer/ : /seed must be an integer/);
+        const expectedError = value === undefined
+          ? new RegExp(`${isRows ? '--rows' : '--seed'} requires a value`)
+          : isRows ? /rows must be a positive integer/ : /seed must be an integer/;
+        assert.match(result.stderr, expectedError);
         assert.equal(result.stdout, '');
         assert.equal(fs.existsSync(output), false);
       });
     }
   });
 }
+
+test('CLI rejects unknown options and missing option values', () => {
+  const { spawnSync } = require('node:child_process');
+  const cli = path.join(__dirname, '..', 'dist', 'cli.js');
+  const cases = [
+    { args: ['-c', 'id:uuid', '--rowz', '5'], error: /Unknown option: --rowz.*--help/s },
+    { args: ['-c', 'id:uuid', '-o'], error: /--output requires a value/ },
+    { args: ['-c', 'id:uuid', '--output', '--rows', '2'], error: /--output requires a value/ },
+    { args: ['-c', 'id:uuid', '--output', '--rowz'], error: /Unknown option: --rowz.*--help/s },
+    { args: ['--columns'], error: /--columns requires a value/ },
+  ];
+
+  for (const { args, error } of cases) {
+    const result = spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, error);
+    assert.equal(result.stdout, '');
+  }
+});
 
 test('invalid CLI numbers preserve existing output', () => {
   const { spawnSync } = require('node:child_process');
