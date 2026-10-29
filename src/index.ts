@@ -162,6 +162,14 @@ export async function generateCSV(options: GenerateOptions): Promise<void> {
     throw new Error(`Invalid format: ${format}. Expected csv, json, or ndjson`);
   }
 
+  const seenHeaders = new Set<string>();
+  for (const column of columns) {
+    if (seenHeaders.has(column.header)) {
+      throw new Error(`Duplicate column header: ${column.header}`);
+    }
+    seenHeaders.add(column.header);
+  }
+
   if (seed !== undefined) {
     faker.seed(seed);
   }
@@ -239,6 +247,11 @@ export function parseColumnString(columnStr: string): ColumnDefinition {
   }
 
   const [header, typeStr] = parts;
+
+  if (header === '') {
+    throw new Error(`Invalid column format: ${columnStr}. Header cannot be empty`);
+  }
+
   const type = typeStr as DataType;
 
   const validTypes: DataType[] = [

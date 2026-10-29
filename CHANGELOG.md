@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Reject unknown CLI options and report when an option value is missing.
+- Reject duplicate and empty column headers in `generateCSV` and `parseColumnString`. (#25)
 
 ## [2.3.0] - 2026-10-25
 
