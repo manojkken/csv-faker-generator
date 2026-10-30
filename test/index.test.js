@@ -250,6 +250,28 @@ test('parseColumnString parses alphanumeric length and upper', () => {
   });
 });
 
+test('generateCSV throws on duplicate column headers', async () => {
+  await assert.rejects(
+    generate([{ header: 'id', type: 'uuid' }, { header: 'id', type: 'name' }]),
+    /Duplicate column header: id/,
+  );
+});
+
+test('parseColumnString throws on empty header', () => {
+  assert.throws(() => parseColumnString(':uuid'), /Invalid column format: :uuid\. Header cannot be empty/);
+});
+
+test('generateCSV still works with distinct valid columns', async () => {
+  const { header, rows } = await generate(
+    [{ header: 'id', type: 'uuid' }, { header: 'email', type: 'email' }],
+  );
+  assert.deepEqual(header, ['id', 'email']);
+  for (const [id, email] of rows) {
+    assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    assert.match(email, /@/);
+  }
+});
+
 test('parseColumnString rejects bad input', () => {
   assert.throws(() => parseColumnString('id'), /Invalid column format/);
   assert.throws(() => parseColumnString('id:nope'), /Invalid data type/);
