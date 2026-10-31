@@ -6,7 +6,7 @@ import * as path from 'node:path';
 const args = process.argv.slice(2);
 const optionNames = new Set([
   '--columns', '-c', '--rows', '-r', '--output', '-o', '--format', '-f',
-  '--delimiter', '-d', '--seed', '-s', '--help', '-h',
+  '--delimiter', '-d', '--seed', '-s', '--no-header', '--help', '-h',
 ]);
 
 // Exit quietly when the reader closes the pipe early (e.g. `-o - | head`).
@@ -32,6 +32,7 @@ Options:
   --format, -f     Output format: csv, json, or ndjson (default: inferred from output extension)
   --delimiter, -d  Field delimiter (default: ,) [options: , ; | \\t]
   --seed, -s       PRNG seed for reproducible output
+  --no-header      Omit the header row (CSV output only; ignored for json/ndjson)
   --help, -h       Show this help message
 
 Data Types:
@@ -55,6 +56,7 @@ Examples:
   csv-faker -c id:uuid,name:name -r 50 --seed 42 -o reproducible.csv
   csv-faker -c id:uuid,email:email -r 5 -o - | head
   csv-faker -c id:uuid -r 3 -f ndjson -o - | jq .
+  csv-faker -c id:uuid,email:email -r 100 --no-header -o - >> existing.csv
 `);
 }
 
@@ -68,13 +70,14 @@ function readOptionValue(option: string, value: string | undefined, allowDashVal
   return value;
 }
 
-function parseArgs(): { columns: ColumnDefinition[]; rows: number; output: string; format?: 'csv' | 'json' | 'ndjson'; delimiter?: string; seed?: number } {
+function parseArgs(): { columns: ColumnDefinition[]; rows: number; output: string; format?: 'csv' | 'json' | 'ndjson'; delimiter?: string; seed?: number; header?: boolean } {
   let columnsStr = '';
   let rows = 10;
   let output = 'output.csv';
   let format: 'csv' | 'json' | 'ndjson' | undefined;
   let delimiter = ',';
   let seed: number | undefined;
+  let header: boolean | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -112,6 +115,8 @@ function parseArgs(): { columns: ColumnDefinition[]; rows: number; output: strin
         process.exit(1);
       }
       seed = parsedSeed;
+    } else if (arg === '--no-header') {
+      header = false;
     } else if (arg.startsWith('-')) {
       throw new Error(`Unknown option: ${arg}. Run with --help to see available options.`);
     }
@@ -132,7 +137,7 @@ function parseArgs(): { columns: ColumnDefinition[]; rows: number; output: strin
     }
   }
 
-  return { columns, rows, output, format, delimiter, seed };
+  return { columns, rows, output, format, delimiter, seed, header };
 }
 
 async function main() {

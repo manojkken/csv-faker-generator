@@ -296,6 +296,52 @@ test('CLI generates a file', () => {
   assert.equal(lines.length, 6);
 });
 
+test('CLI --no-header omits the header row for file output', () => {
+  const { execFileSync } = require('node:child_process');
+  const output = path.join(tmpDir, 'cli-no-header.csv');
+  execFileSync(process.execPath, [
+    path.join(__dirname, '..', 'dist', 'cli.js'), '-c', 'id:uuid,name:name', '-r', '5', '--no-header', '-o', output,
+  ]);
+  const lines = fs.readFileSync(output, 'utf8').trim().split('\n');
+  assert.notEqual(lines[0], 'id,name');
+  assert.equal(lines.length, 5);
+});
+
+test('generateCSV omits the header row when header is false', async () => {
+  const output = path.join(tmpDir, 'no-header.csv');
+  await generateCSV({
+    columns: [{ header: 'id', type: 'uuid' }, { header: 'name', type: 'name' }],
+    rows: 5,
+    output,
+    header: false,
+  });
+  const lines = fs.readFileSync(output, 'utf8').trim().split('\n');
+  assert.equal(lines.length, 5);
+  assert.notEqual(lines[0], 'id,name');
+});
+
+test('header: false is ignored for json and ndjson output', async () => {
+  const jsonOutput = path.join(tmpDir, 'no-header.json');
+  await generateCSV({
+    columns: [{ header: 'id', type: 'uuid' }],
+    rows: 3,
+    output: jsonOutput,
+    format: 'json',
+    header: false,
+  });
+  assert.equal(JSON.parse(fs.readFileSync(jsonOutput, 'utf8')).length, 3);
+
+  const ndjsonOutput = path.join(tmpDir, 'no-header.ndjson');
+  await generateCSV({
+    columns: [{ header: 'id', type: 'uuid' }],
+    rows: 3,
+    output: ndjsonOutput,
+    format: 'ndjson',
+    header: false,
+  });
+  assert.equal(fs.readFileSync(ndjsonOutput, 'utf8').trim().split('\n').length, 3);
+});
+
 test('CLI writes to stdout when -o is -', () => {
   const { execFileSync } = require('node:child_process');
   const cli = path.join(__dirname, '..', 'dist', 'cli.js');
@@ -305,6 +351,11 @@ test('CLI writes to stdout when -o is -', () => {
   ], { encoding: 'utf8' });
   assert.equal(csvOut, 'value\nok\nok\n');
   assert.ok(!csvOut.includes('Generated'));
+
+  const csvNoHeaderOut = execFileSync(process.execPath, [
+    cli, '-c', 'value:pick:ok', '-r', '2', '--no-header', '-o', '-',
+  ], { encoding: 'utf8' });
+  assert.equal(csvNoHeaderOut, 'ok\nok\n');
 
   const jsonOut = execFileSync(process.execPath, [
     cli, '-c', 'value:pick:ok', '-r', '2', '-f', 'json', '-o', '-',

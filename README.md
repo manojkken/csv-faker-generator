@@ -14,6 +14,7 @@ Generate CSV files with realistic fake data using customizable headers and data 
 - **Date ranges**: Optional `from`/`to` bounds and `YYYY-MM-DD` output via `dateFormat`
 - **Flexible number formatting**: Control decimal precision and ranges
 - **Custom delimiters**: Support for comma, semicolon, tab, pipe
+- **Optional header row**: Omit the CSV header with `--no-header` / `header: false` (e.g. when appending to an existing file)
 - **Multiple output formats**: CSV, JSON arrays, and newline-delimited JSON
 - **Reproducible data**: Seed support for consistent test fixtures and snapshot testing
 - **Simple CLI interface**: Generate CSV files from command line
@@ -190,6 +191,19 @@ await generateCSV({
 });
 ```
 
+### 6. Omitting the Header Row
+
+Use `header: false` to write CSV rows without a header, e.g. to append them to an existing file afterwards. This is a CSV-only option; it's ignored for `json` and `ndjson` output. Note that `output` is always overwritten, so write to a new file (or `'-'` for stdout) and append it yourself, for example `cat more-rows.csv >> existing.csv`.
+
+```typescript
+await generateCSV({
+  columns: [{ header: 'id', type: 'uuid' }, { header: 'email', type: 'email' }],
+  rows: 100,
+  output: 'more-rows.csv',
+  header: false,
+});
+```
+
 ## Complete Example: E-commerce Articles
 
 This example demonstrates all advanced features together:
@@ -233,6 +247,7 @@ await generateCSV({
 - `--format, -f` - Output format: `csv`, `json`, or `ndjson` (default: inferred from `.json` / `.ndjson` extension, otherwise `csv`)
 - `--delimiter, -d` - Field delimiter (default: `,`) [options: `,` `;` `|` `\t`]
 - `--seed, -s` - PRNG seed for reproducible output
+- `--no-header` - Omit the header row (CSV output only; ignored for `json`/`ndjson`)
 - `--help, -h` - Show help message
 
 ### Examples
@@ -246,6 +261,9 @@ npx csv-faker -c id:uuid,name:name,email:email -r 50 --seed 42 -o users.csv
 
 # Generate with semicolon delimiter
 npx csv-faker -c id:uuid,name:name,email:email --delimiter ";" -r 50 -o contacts.csv
+
+# Append rows without a header row to an existing CSV file
+npx csv-faker -c id:uuid,email:email -r 100 --no-header -o - >> existing.csv
 
 # Generate a status from fixed values (quote the argument so the shell passes `|` literally)
 npx csv-faker -c 'id:uuid,status:pick:active|inactive|pending' -r 10 -o users.csv
@@ -333,6 +351,7 @@ interface GenerateOptions {
   format?: 'csv' | 'json' | 'ndjson'; // Default: 'csv'
   delimiter?: string;        // Default: ','
   seed?: number;             // PRNG seed for reproducible output
+  header?: boolean;          // Default: true. CSV only; ignored for json/ndjson
 }
 
 function generateCSV(options: GenerateOptions): Promise<void>;
