@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { createObjectCsvStringifier, createObjectCsvWriter } from 'csv-writer';
+import { createObjectCsvStringifier } from 'csv-writer';
 import { writeFile } from 'node:fs/promises';
 
 const COLUMN_DEFINITION_SEPARATOR = ':';
@@ -56,6 +56,7 @@ export interface GenerateOptions {
   format?: 'csv' | 'json' | 'ndjson';
   delimiter?: string;
   seed?: number;
+  header?: boolean;
 }
 
 function formatDate(value: Date, dateFormat: 'iso' | 'date' = 'iso'): string {
@@ -156,7 +157,7 @@ function generateValue(column: ColumnDefinition, row?: Record<string, any>): str
 }
 
 export async function generateCSV(options: GenerateOptions): Promise<void> {
-  const { columns, rows, output, format = 'csv', delimiter = ',', seed } = options;
+  const { columns, rows, output, format = 'csv', delimiter = ',', seed, header = true } = options;
 
   if (format !== 'csv' && format !== 'json' && format !== 'ndjson') {
     throw new Error(`Invalid format: ${format}. Expected csv, json, or ndjson`);
@@ -217,19 +218,18 @@ export async function generateCSV(options: GenerateOptions): Promise<void> {
     } else {
       await writeFile(output, content);
     }
-  } else if (toStdout) {
+  } else {
     const csvStringifier = createObjectCsvStringifier({
       header: csvHeader,
       fieldDelimiter: delimiter,
     });
-    process.stdout.write(csvStringifier.getHeaderString() + csvStringifier.stringifyRecords(records));
-  } else {
-    const csvWriter = createObjectCsvWriter({
-      path: output,
-      header: csvHeader,
-      fieldDelimiter: delimiter,
-    });
-    await csvWriter.writeRecords(records);
+    const headerString = header ? csvStringifier.getHeaderString() ?? '' : '';
+    const content = headerString + csvStringifier.stringifyRecords(records);
+    if (toStdout) {
+      process.stdout.write(content);
+    } else {
+      await writeFile(output, content);
+    }
   }
 
   const status = `✓ Generated ${rows} rows ${toStdout ? 'to stdout' : `in ${output}`}`;
