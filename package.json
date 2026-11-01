@@ -1,6 +1,6 @@
 {
   "name": "csv-faker-generator",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Generate CSV, JSON, or NDJSON files with fake data: 27+ data types, alphanumeric strings, pick from custom values, formula fields, decimal precision, custom delimiters. Perfect for testing and prototyping.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
