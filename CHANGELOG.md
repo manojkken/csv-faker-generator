@@ -6,15 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-11-01
+
 ### Added
-- `--no-header` CLI flag and `header: false` option in `GenerateOptions` to omit the CSV header row. CSV only; ignored for `json`/`ndjson`. (#30)
+- `--no-header` CLI flag and `header: false` option in `GenerateOptions` to omit the CSV header row. CSV only; ignored for `json`/`ndjson`. Thanks [@redwing509](https://github.com/redwing509)! (#33)
 
 ### Changed
-- Data types are defined once in an exported `DATA_TYPES` constant; the `DataType` type, CLI validation and `--help` list are derived from it. (#28)
+- Data types are defined once in an exported `DATA_TYPES` constant; the `DataType` type, CLI validation and `--help` list are derived from it. (#34)
 
 ### Fixed
-- Reject unknown CLI options and report when an option value is missing.
-- Reject duplicate and empty column headers in `generateCSV` and `parseColumnString`. (#25)
+- Reject unknown CLI options and report when an option value is missing. Thanks [@dannyward630](https://github.com/dannyward630)! (#31)
+- Reject duplicate and empty column headers in `generateCSV` and `parseColumnString`. Thanks [@redwing509](https://github.com/redwing509)! (#32)
 
 ## [2.3.0] - 2026-10-25
 
@@ -67,7 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release: CLI (`csv-faker`) and programmatic `generateCSV` API with Faker-backed data types.
 
-[Unreleased]: https://github.com/manojkken/csv-faker-generator/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/manojkken/csv-faker-generator/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/manojkken/csv-faker-generator/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/manojkken/csv-faker-generator/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/manojkken/csv-faker-generator/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/manojkken/csv-faker-generator/compare/v2.0.1...v2.1.0
