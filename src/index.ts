@@ -5,34 +5,17 @@ import { writeFile } from 'node:fs/promises';
 const COLUMN_DEFINITION_SEPARATOR = ':';
 const PICK_VALUES_SEPARATOR = '|';
 
-export type DataType =
-  | 'uuid'
-  | 'name'
-  | 'firstName'
-  | 'lastName'
-  | 'title'
-  | 'email'
-  | 'phone'
-  | 'address'
-  | 'secondaryAddress'
-  | 'city'
-  | 'country'
-  | 'zipCode'
-  | 'company'
-  | 'jobTitle'
-  | 'number'
-  | 'date'
-  | 'boolean'
-  | 'url'
-  | 'ip'
-  | 'username'
-  | 'password'
-  | 'iban'
-  | 'bic'
-  | 'bankName'
-  | 'alphanumeric'
-  | 'pick'
-  | 'formula';
+export const DATA_TYPES = [
+  'uuid', 'name', 'firstName', 'lastName', 'title', 'email', 'phone',
+  'address', 'secondaryAddress', 'city', 'country', 'zipCode', 'company',
+  'jobTitle', 'number', 'date', 'boolean', 'url', 'ip', 'username', 'password',
+  'iban', 'bic', 'bankName', 'alphanumeric', 'pick', 'formula',
+] as const;
+
+export type DataType = (typeof DATA_TYPES)[number];
+
+// Types usable from `header:type` column strings; `formula` needs a function.
+export const CLI_DATA_TYPES: readonly DataType[] = DATA_TYPES.filter((type) => type !== 'formula');
 
 export interface ColumnDefinition {
   header: string;
@@ -254,15 +237,8 @@ export function parseColumnString(columnStr: string): ColumnDefinition {
 
   const type = typeStr as DataType;
 
-  const validTypes: DataType[] = [
-    'uuid', 'name', 'firstName', 'lastName', 'title', 'email', 'phone',
-    'address', 'secondaryAddress', 'city', 'country', 'zipCode', 'company', 'jobTitle',
-    'number', 'date', 'boolean', 'url', 'ip', 'username', 'password',
-    'iban', 'bic', 'bankName', 'alphanumeric', 'pick'
-  ];
-
-  if (!validTypes.includes(type)) {
-    throw new Error(`Invalid data type: ${type}. Valid types: ${validTypes.join(', ')}`);
+  if (!CLI_DATA_TYPES.includes(type)) {
+    throw new Error(`Invalid data type: ${type}. Valid types: ${CLI_DATA_TYPES.join(', ')}`);
   }
 
   if (type === 'pick') {
