@@ -273,6 +273,10 @@ npx csv-faker -c 'id:uuid,created:date:2024-01-01|2024-12-31' -r 10 -o orders.cs
 
 # Generate alphanumeric codes with length and uppercase
 npx csv-faker -c 'sku:alphanumeric:12,code:alphanumeric:8:upper' -r 10 -o products.csv
+
+# Generate numbers with bounds and decimal places (same `|` quoting rules as pick)
+npx csv-faker -c 'qty:number:1|10,price:number:5|50:2' -r 10 -o products.csv
+
 # Stream JSON to stdout
 npx csv-faker -c id:uuid -r 3 -f ndjson -o - | jq .
 
@@ -280,7 +284,7 @@ npx csv-faker -c id:uuid -r 3 -f ndjson -o - | jq .
 npx csv-faker -c customer_number:number,title:title,firstname:firstName,lastname:lastName,email:email,iban:iban,bic:bic -r 200 -o customers.csv
 ```
 
-**Note**: CLI `pick` values use `header:pick:value1|value2`, date ranges use `header:date:from|to`, and `alphanumeric` options use `header:alphanumeric[:length][:upper]`; quote the `-c` argument in shells so `|` is passed literally. `dateFormat` and `formula` still require programmatic usage.
+**Note**: CLI `pick` values use `header:pick:value1|value2`, date ranges use `header:date:from|to`, `alphanumeric` options use `header:alphanumeric[:length][:upper]`, and `number` bounds/decimals use `header:number:min|max[:decimals]`; quote the `-c` argument in shells so `|` is passed literally. `dateFormat` and `formula` still require programmatic usage.
 
 ## Supported Data Types
 
@@ -300,7 +304,7 @@ npx csv-faker -c customer_number:number,title:title,firstname:firstName,lastname
 | `zipCode` | Postal code | `10001` | ✓ | ✓ |
 | `company` | Company name | `Tech Corp` | ✓ | ✓ |
 | `jobTitle` | Job title | `Software Engineer` | ✓ | ✓ |
-| `number` | Random number | `42` | ✓ | ✓ |
+| `number` | Random number | `42` | ✓* | ✓ |
 | `date` | ISO date (optional `from`/`to` range, `dateFormat`) | `2024-01-15T10:30:00.000Z` | ✓* | ✓ |
 | `boolean` | Boolean | `true` / `false` | ✓ | ✓ |
 | `url` | Website URL | `https://example.com` | ✓ | ✓ |
@@ -314,7 +318,7 @@ npx csv-faker -c customer_number:number,title:title,firstname:firstName,lastname
 | `pick` | Pick from array | Custom values | ✓* | ✓ |
 | `formula` | Calculated value | Based on other fields | ✗ | ✓ |
 
-*CLI supports `pick` (`header:pick:value1|value2`), `date` ranges (`header:date:from|to`) and `alphanumeric` (`header:alphanumeric[:length][:upper]`). Other options (`dateFormat`, `formula`, etc.) need programmatic usage.
+*CLI supports `pick` (`header:pick:value1|value2`), `date` ranges (`header:date:from|to`), `alphanumeric` (`header:alphanumeric[:length][:upper]`) and `number` bounds/decimals (`header:number:min|max[:decimals]`). Other options (`dateFormat`, `formula`, etc.) need programmatic usage.
 
 ## TypeScript API
 

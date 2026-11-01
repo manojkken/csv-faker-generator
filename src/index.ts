@@ -66,6 +66,19 @@ function formatDate(value: Date, dateFormat: 'iso' | 'date' = 'iso'): string {
   return value.toISOString();
 }
 
+/**
+ * The whole steps of 10^-decimals inside [min, max], as integers. Rounding the
+ * scaled bounds first absorbs float error, so 0.29 at 2 places is step 29,
+ * not 28.999999999999996.
+ */
+function decimalSteps(min: number, max: number, decimals: number): { low: number; high: number } {
+  const scale = 10 ** decimals;
+  return {
+    low: Math.ceil(Number((min * scale).toFixed(6))),
+    high: Math.floor(Number((max * scale).toFixed(6))),
+  };
+}
+
 function generateValue(column: ColumnDefinition, row?: Record<string, any>): string | number | boolean {
   const { type, min, max, length, uppercase, values, decimals, from, to, dateFormat } = column;
 
@@ -99,12 +112,21 @@ function generateValue(column: ColumnDefinition, row?: Record<string, any>): str
     case 'jobTitle':
       return faker.person.jobTitle();
     case 'number': {
-      const num = faker.number.int({ min: min ?? 1, max: max ?? 1000 });
-      if (decimals !== undefined) {
-        const float = faker.number.float({ min: min ?? 1, max: max ?? 1000, fractionDigits: decimals });
-        return parseFloat(float.toFixed(decimals));
+      // Decide the path before drawing: an integer draw on a range such as
+      // 10.25..10.75 has no integer in it and would throw.
+      if (decimals !== undefined && decimals > 0) {
+        const lo = min ?? 1;
+        const hi = max ?? 1000;
+        const { low, high } = decimalSteps(lo, hi, decimals);
+        if (!Number.isSafeInteger(low) || !Number.isSafeInteger(high)) {
+          // Past 2^53 the steps are no longer exact integers, so draw a plain
+          // float and clamp the rounded value back into range.
+          const rounded = parseFloat(faker.number.float({ min: lo, max: hi }).toFixed(decimals));
+          return Math.min(hi, Math.max(lo, rounded));
+        }
+        return parseFloat((faker.number.int({ min: low, max: high }) / 10 ** decimals).toFixed(decimals));
       }
-      return num;
+      return faker.number.int({ min: min ?? 1, max: max ?? 1000 });
     }
     case 'date': {
       if ((from == null) !== (to == null)) {
@@ -287,6 +309,57 @@ export function parseColumnString(columnStr: string): ColumnDefinition {
       throw new Error(`date type for column "${header}" requires from|to ISO dates after the second colon`);
     }
     return { header, type, from: bounds[0], to: bounds[1] };
+  }
+
+  if (type === 'number' && parts.length > 2) {
+    const bounds = parts[2]
+      .split(PICK_VALUES_SEPARATOR)
+      .map((value) => value.trim());
+    if (bounds.length !== 2 || bounds[0] === '' || bounds[1] === '') {
+      throw new Error(`number type for column "${header}" requires min|max after the second colon`);
+    }
+
+    const min = Number(bounds[0]);
+    const max = Number(bounds[1]);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      throw new Error(`number bounds for column "${header}" must be finite numbers`);
+    }
+    if (min > max) {
+      throw new Error(`number min for column "${header}" must not be greater than max`);
+    }
+
+    const result: ColumnDefinition = { header, type, min, max };
+
+    if (parts.length > 3) {
+      const decimalsToken = parts[3].trim();
+      const decimals = Number(decimalsToken);
+      if (decimalsToken === '' || !Number.isInteger(decimals) || decimals < 0 || decimals > 100) {
+        throw new Error(`number decimals for column "${header}" must be an integer from 0 to 100`);
+      }
+      result.decimals = decimals;
+    }
+
+    if (parts.length > 4) {
+      throw new Error(`number type for column "${header}" has too many parts after the second colon`);
+    }
+
+    const steps = decimalSteps(min, max, result.decimals ?? 0);
+    if (!Number.isSafeInteger(steps.low) || !Number.isSafeInteger(steps.high)) {
+      throw new Error(
+        result.decimals
+          ? `number range for column "${header}" is too large for ${result.decimals} decimal place(s); use fewer decimals or a smaller range`
+          : `number range for column "${header}" is too large; keep bounds within ±${Number.MAX_SAFE_INTEGER}`,
+      );
+    }
+    if (steps.low > steps.high) {
+      throw new Error(
+        result.decimals
+          ? `number range for column "${header}" contains no value with ${result.decimals} decimal place(s); use more decimals`
+          : `number range for column "${header}" contains no integer; use decimals of 1 or more (for example ${header}:number:${bounds[0]}|${bounds[1]}:2)`,
+      );
+    }
+
+    return result;
   }
 
   if (type === 'alphanumeric') {

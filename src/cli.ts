@@ -27,6 +27,7 @@ Options:
                     For pick values, use header:pick:value1|value2 (quote the argument)
                     For date ranges, use header:date:from|to (ISO dates, quote the argument)
                     For alphanumeric, use header:alphanumeric[:length][:upper]
+                    For number bounds, use header:number:min|max[:decimals] (quote the argument)
   --rows, -r       Number of rows to generate (default: 10)
   --output, -o     Output file path (default: output.csv). Use - for stdout
   --format, -f     Output format: csv, json, or ndjson (default: inferred from output extension)
@@ -51,6 +52,7 @@ Examples:
   csv-faker -c 'id:uuid,status:pick:active|inactive|pending' -r 10
   csv-faker -c 'id:uuid,created:date:2024-01-01|2024-12-31' -r 10
   csv-faker -c 'sku:alphanumeric:12,code:alphanumeric:8:upper' -r 10
+  csv-faker -c 'qty:number:1|10,price:number:5|50:2' -r 10
   csv-faker -c id:uuid,name:name -r 50 -o users.json
   csv-faker -c id:uuid,name:name -r 50 -f ndjson -o users.data
   csv-faker -c id:uuid,name:name -r 50 --seed 42 -o reproducible.csv

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `--no-header` CLI flag and `header: false` option in `GenerateOptions` to omit the CSV header row. CSV only; ignored for `json`/`ndjson`. (#30)
+- CLI support for `number` `min`/`max` bounds and `decimals` via `header:number:min|max[:decimals]` syntax, instead of silently ignoring them. (#26)
 
 ### Fixed
 - Reject unknown CLI options and report when an option value is missing.
