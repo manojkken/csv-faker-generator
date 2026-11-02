@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { generateCSV, parseColumnString, ColumnDefinition } from './index';
+import { generateCSV, parseColumnString, ColumnDefinition, CLI_DATA_TYPES } from './index';
 import * as path from 'node:path';
 
 const args = process.argv.slice(2);
@@ -14,6 +14,22 @@ process.stdout.on('error', (err: NodeJS.ErrnoException) => {
   if (err.code === 'EPIPE') process.exit(0);
   throw err;
 });
+
+// Wraps the CLI type list into indented lines for the help text.
+function formatDataTypes(width = 66): string {
+  const lines: string[] = [];
+  let line = ' ';
+  for (const [index, type] of CLI_DATA_TYPES.entries()) {
+    const token = ` ${type}${index < CLI_DATA_TYPES.length - 1 ? ',' : ''}`;
+    if (line.length + token.length > width) {
+      lines.push(line);
+      line = ' ';
+    }
+    line += token;
+  }
+  lines.push(line);
+  return lines.join('\n');
+}
 
 function showHelp() {
   console.log(`
@@ -37,10 +53,7 @@ Options:
   --help, -h       Show this help message
 
 Data Types:
-  uuid, name, firstName, lastName, title, email, phone, address,
-  secondaryAddress, city, country, zipCode, company, jobTitle,
-  number, date, boolean, url, ip, username, password, iban, bic,
-  bankName, alphanumeric, pick
+${formatDataTypes()}
 
   Note: dateFormat and formula require programmatic usage. See README for examples.
 

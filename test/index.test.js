@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { generateCSV, parseColumnString } = require('../dist/index');
+const { generateCSV, parseColumnString, DATA_TYPES, CLI_DATA_TYPES } = require('../dist/index');
 
 // generateCSV logs a status line per call; keep it out of the test reporter stream.
 mock.method(console, 'log', () => {});
@@ -312,6 +312,38 @@ test('generateCSV still works with distinct valid columns', async () => {
   for (const [id, email] of rows) {
     assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     assert.match(email, /@/);
+  }
+});
+
+test('CLI_DATA_TYPES is DATA_TYPES without formula', () => {
+  assert.deepEqual([...CLI_DATA_TYPES], DATA_TYPES.filter((type) => type !== 'formula'));
+});
+
+test('parseColumnString accepts every CLI data type', () => {
+  const columnStrings = {
+    pick: 'col:pick:a|b',
+  };
+  for (const type of CLI_DATA_TYPES) {
+    const column = parseColumnString(columnStrings[type] ?? `col:${type}`);
+    assert.equal(column.type, type);
+  }
+  assert.throws(() => parseColumnString('col:formula'), /Invalid data type: formula/);
+});
+
+test('generateCSV produces a value for every data type', async () => {
+  const columns = DATA_TYPES.map((type) => ({
+    header: type,
+    type,
+    ...(type === 'pick' && { values: ['a'] }),
+    ...(type === 'formula' && { formula: () => 'f' }),
+  }));
+  const output = path.join(tmpDir, 'all-types.json');
+  await generateCSV({ columns, rows: 1, output, format: 'json' });
+  const [record] = JSON.parse(fs.readFileSync(output, 'utf8'));
+  assert.deepEqual(Object.keys(record), [...DATA_TYPES]);
+  for (const type of DATA_TYPES) {
+    assert.notEqual(record[type], undefined, type);
+    assert.notEqual(record[type], '', type);
   }
 });
 

@@ -38,10 +38,9 @@ node dist/cli.js -c id:uuid,name:name,email:email -r 5 -o out.csv
 
 ### Adding a new data type
 
-1. Add the name to the `DataType` union in `src/index.ts`.
+1. Add the name to `DATA_TYPES` in `src/index.ts`. The `DataType` type, CLI validation and `--help` list all derive from it.
 2. Add a `case` in `generateValue`.
-3. Add it to `validTypes` in `parseColumnString` (so the CLI accepts it) and to the help text in `src/cli.ts`.
-4. Document it in the README and add a test.
+3. Document it in the README and add a test.
 
 ## Reporting bugs
 
