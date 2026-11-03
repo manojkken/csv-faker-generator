@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- CLI support for `number` `min`/`max` bounds and `decimals` via `header:number:min|max[:decimals]` syntax, instead of silently ignoring them. (#26)
+
+### Changed
+- Seeded output changes for `number` columns with `decimals`, including the columns generated after them, because the previous code made two random draws and this change makes one. (#26)
+
 ## [2.4.0] - 2026-11-01
 
 ### Added

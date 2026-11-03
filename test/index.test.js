@@ -250,6 +250,49 @@ test('parseColumnString parses alphanumeric length and upper', () => {
   });
 });
 
+test('parseColumnString parses number bounds and decimals', () => {
+  assert.deepEqual(parseColumnString('qty:number'), { header: 'qty', type: 'number' });
+  assert.deepEqual(parseColumnString('qty:number:1|10'), {
+    header: 'qty',
+    type: 'number',
+    min: 1,
+    max: 10,
+  });
+  assert.deepEqual(parseColumnString('price:number:5|50:2'), {
+    header: 'price',
+    type: 'number',
+    min: 5,
+    max: 50,
+    decimals: 2,
+  });
+  assert.deepEqual(parseColumnString('qty:number: 1 | 10 '), {
+    header: 'qty',
+    type: 'number',
+    min: 1,
+    max: 10,
+  });
+  assert.deepEqual(parseColumnString('zero:number:0|0'), {
+    header: 'zero',
+    type: 'number',
+    min: 0,
+    max: 0,
+  });
+  assert.deepEqual(parseColumnString('neg:number:-5|0:1'), {
+    header: 'neg',
+    type: 'number',
+    min: -5,
+    max: 0,
+    decimals: 1,
+  });
+  assert.deepEqual(parseColumnString('round:number:1|5:0'), {
+    header: 'round',
+    type: 'number',
+    min: 1,
+    max: 5,
+    decimals: 0,
+  });
+});
+
 test('generateCSV throws on duplicate column headers', async () => {
   await assert.rejects(
     generate([{ header: 'id', type: 'uuid' }, { header: 'id', type: 'name' }]),
@@ -315,6 +358,31 @@ test('parseColumnString rejects bad input', () => {
   assert.throws(() => parseColumnString('sku:alphanumeric:-3'), /alphanumeric.*positive integer/);
   assert.throws(() => parseColumnString('sku:alphanumeric:abc'), /alphanumeric.*positive integer/);
   assert.throws(() => parseColumnString('sku:alphanumeric:8:lower'), /alphanumeric.*upper/);
+  assert.throws(() => parseColumnString('qty:number:5'), /number type.*requires min\|max/);
+  assert.throws(() => parseColumnString('qty:number: | '), /number type.*requires min\|max/);
+  assert.throws(() => parseColumnString('qty:number:5|'), /number type.*requires min\|max/);
+  assert.throws(() => parseColumnString('qty:number:abc|10'), /number bounds.*must be finite numbers/);
+  assert.throws(() => parseColumnString('qty:number:1|abc'), /number bounds.*must be finite numbers/);
+  assert.throws(() => parseColumnString('qty:number:10|1'), /number min.*must not be greater than max/);
+  assert.throws(() => parseColumnString('price:number:1|10:abc'), /number decimals.*integer from 0 to 100/);
+  assert.throws(() => parseColumnString('price:number:1|10:-1'), /number decimals.*integer from 0 to 100/);
+  assert.throws(() => parseColumnString('price:number:1|10:1.5'), /number decimals.*integer from 0 to 100/);
+  assert.throws(() => parseColumnString('qty:number:Infinity|Infinity'), /number bounds.*must be finite numbers/);
+  assert.throws(() => parseColumnString('qty:number:-Infinity|10'), /number bounds.*must be finite numbers/);
+  assert.throws(() => parseColumnString('price:number:1|10:101'), /number decimals.*integer from 0 to 100/);
+  assert.throws(() => parseColumnString('price:number:0.1|0.9'), /number range.*contains no integer/);
+  assert.throws(() => parseColumnString('price:number:0.1|0.9:0'), /number range.*contains no integer; use decimals of 1 or more/);
+  assert.doesNotThrow(() => parseColumnString('price:number:1.5|3.5'));
+  assert.throws(() => parseColumnString('price:number:0.55|0.55:1'), /number range.*no value with 1 decimal place/);
+  assert.throws(() => parseColumnString('x:number:0|10:15'), /too large for 15 decimal place/);
+  assert.throws(() => parseColumnString('x:number:1e300|1e300:100'), /too large for 100 decimal place/);
+  assert.doesNotThrow(() => parseColumnString('x:number:0|10:14'));
+  assert.throws(() => parseColumnString('qty:number:1|100000000000000000000'), /number range.*is too large; keep bounds within/);
+  assert.throws(() => parseColumnString('qty:number:-1e20|1:0'), /number range.*is too large; keep bounds within/);
+  assert.doesNotThrow(() => parseColumnString('qty:number:-9007199254740991|9007199254740991'));
+  assert.throws(() => parseColumnString('price:number:0.51|0.59:1'), /number range.*no value with 1 decimal place/);
+  assert.doesNotThrow(() => parseColumnString('price:number:0|0:100'));
+  assert.throws(() => parseColumnString('price:number:1|10:2:extra'), /number type.*too many parts/);
 });
 
 test('CLI generates a file', () => {
@@ -537,6 +605,74 @@ test('CLI accepts alphanumeric length and upper', () => {
     assert.match(code, /^[A-Z0-9]{8}$/);
   }
 });
+test('CLI accepts number bounds and decimals', () => {
+  const { execFileSync } = require('node:child_process');
+  const output = path.join(tmpDir, 'cli-number.csv');
+  execFileSync(process.execPath, [
+    path.join(__dirname, '..', 'dist', 'cli.js'),
+    '-c', 'qty:number:1|10,price:number:5|50:2,zero:number:0|0', '-r', '20', '-o', output,
+  ]);
+  const [header, ...rows] = fs.readFileSync(output, 'utf8').trim().split('\n');
+  assert.equal(header, 'qty,price,zero');
+  assert.equal(rows.length, 20);
+  for (const row of rows) {
+    const [qty, price, zero] = row.split(',');
+    assert.ok(Number.isInteger(Number(qty)) && +qty >= 1 && +qty <= 10, `qty out of range: ${qty}`);
+    assert.ok(+price >= 5 && +price <= 50, `price out of range: ${price}`);
+    assert.ok((price.split('.')[1] ?? '').length <= 2, `too many decimals: ${price}`);
+    assert.equal(+zero, 0);
+  }
+  // decimals must reach the generator: with 20 rows in 5..50 at 2 places, some value is fractional
+  assert.ok(rows.some((row) => !Number.isInteger(Number(row.split(',')[1]))), 'decimals not applied');
+});
+
+test('CLI accepts decimal ranges that contain no integer', () => {
+  const { spawnSync } = require('node:child_process');
+  const cli = path.join(__dirname, '..', 'dist', 'cli.js');
+
+  const cases = [
+    { range: '10.25|10.75', min: 10.25, max: 10.75 },
+    { range: '0.10|0.20', min: 0.1, max: 0.2 },
+    { range: '1.1|1.9', min: 1.1, max: 1.9 },
+    { range: '-0.4|-0.1', min: -0.4, max: -0.1 },
+    { range: '0.29|0.29', min: 0.29, max: 0.29 },
+    { range: '19.99|19.99', min: 19.99, max: 19.99 },
+  ];
+
+  for (const { range, min, max } of cases) {
+    const output = path.join(tmpDir, 'cli-number-decimal-range.csv');
+    const result = spawnSync(process.execPath, [cli, '-c', `price:number:${range}:2`, '-r', '10', '-o', output], { encoding: 'utf8' });
+    assert.equal(result.status, 0, `${range}: ${result.stderr}`);
+    const [, ...rows] = fs.readFileSync(output, 'utf8').trim().split('\n');
+    assert.equal(rows.length, 10);
+    for (const price of rows) {
+      assert.ok(+price >= min && +price <= max, `${range}: price out of range: ${price}`);
+      assert.ok((price.split('.')[1] ?? '').length <= 2, `${range}: too many decimals: ${price}`);
+    }
+  }
+});
+
+test('CLI rejects invalid number bounds and decimals', () => {
+  const { spawnSync } = require('node:child_process');
+  const cli = path.join(__dirname, '..', 'dist', 'cli.js');
+
+  const cases = [
+    { columns: 'qty:number:5', error: /number type.*requires min\|max/ },
+    { columns: 'qty:number:abc|10', error: /number bounds.*must be finite numbers/ },
+    { columns: 'qty:number:10|1', error: /number min.*must not be greater than max/ },
+    { columns: 'price:number:1|10:abc', error: /number decimals.*integer from 0 to 100/ },
+    { columns: 'price:number:1|10:-1', error: /number decimals.*integer from 0 to 100/ },
+    { columns: 'price:number:0.1|0.9', error: /number range.*contains no integer/ },
+    { columns: 'price:number:0.55|0.55:1', error: /number range.*no value with 1 decimal place/ },
+  ];
+
+  for (const { columns, error } of cases) {
+    const result = spawnSync(process.execPath, [cli, '-c', columns, '-r', '1', '-o', path.join(tmpDir, 'cli-number-invalid.csv')], { encoding: 'utf8' });
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, error);
+  }
+});
+
 test('generateCSV produces reproducible output when given the same seed', async () => {
   const file1 = path.join(tmpDir, 'seeded-1.csv');
   const file2 = path.join(tmpDir, 'seeded-2.csv');
@@ -592,4 +728,27 @@ test('CLI exits cleanly when stdout is closed early (EPIPE)', async () => {
   const code = await new Promise((resolve) => child.on('close', resolve));
   assert.doesNotMatch(stderr, /Unhandled 'error'/);
   assert.equal(code, 0, stderr);
+});
+
+test('programmatic number with decimals beyond safe precision stays finite and in range', async () => {
+  const { rows } = await generate([{ header: 'x', type: 'number', min: 0, max: 10, decimals: 15 }], { rows: 50 });
+  for (const [value] of rows) {
+    const n = Number(value);
+    assert.ok(Number.isFinite(n) && n >= 0 && n <= 10, `out of range: ${value}`);
+  }
+});
+
+test('CLI fractional bounds without decimals draw only integers inside the range', () => {
+  const { spawnSync } = require('node:child_process');
+  const cli = path.join(__dirname, '..', 'dist', 'cli.js');
+  for (const spec of ['n:number:1.5|3.5', 'n:number:1.2|5.8:0']) {
+    const [lo, hi] = spec.split(':')[2].split('|').map(Number);
+    const result = spawnSync(process.execPath, [cli, '-c', spec, '-r', '200', '-o', '-'], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    const values = result.stdout.trim().split('\n').slice(1, 201).map(Number);
+    assert.equal(values.length, 200);
+    for (const v of values) {
+      assert.ok(Number.isInteger(v) && v >= lo && v <= hi, `${spec}: ${v}`);
+    }
+  }
 });
