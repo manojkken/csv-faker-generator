@@ -9,7 +9,7 @@ export const DATA_TYPES = [
   'uuid', 'name', 'firstName', 'lastName', 'title', 'email', 'phone',
   'address', 'secondaryAddress', 'city', 'country', 'zipCode', 'company',
   'jobTitle', 'number', 'date', 'boolean', 'url', 'ip', 'username', 'password',
-  'iban', 'bic', 'bankName', 'alphanumeric', 'pick', 'formula',
+  'iban', 'bic', 'bankName', 'word', 'sentence', 'paragraph', 'alphanumeric', 'pick', 'formula',
 ] as const;
 
 export type DataType = (typeof DATA_TYPES)[number];
@@ -136,6 +136,12 @@ function generateValue(column: ColumnDefinition, row?: Record<string, any>): str
       return faker.finance.bic();
     case 'bankName':
       return faker.company.name() + ' Bank';
+    case 'word':
+      return faker.lorem.word();
+    case 'sentence':
+      return faker.lorem.sentence();
+    case 'paragraph':
+      return faker.lorem.paragraph();
     case 'alphanumeric': {
       const len = length || 10;
       let result = faker.string.alphanumeric(len);

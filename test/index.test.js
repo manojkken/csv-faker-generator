@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { generateCSV, parseColumnString, DATA_TYPES, CLI_DATA_TYPES } = require('../dist/index');
+const { faker } = require('@faker-js/faker');
 
 // generateCSV logs a status line per call; keep it out of the test reporter stream.
 mock.method(console, 'log', () => {});
@@ -17,6 +18,28 @@ async function generate(columns, opts = {}) {
   const sep = opts.delimiter ?? ',';
   return { header: header.split(sep), rows: rows.map((r) => r.split(sep)) };
 }
+
+for (const type of ['word', 'sentence', 'paragraph']) {
+  test(`${type} generates lorem text and is accepted as a CLI column`, async (t) => {
+    t.mock.method(faker.lorem, type, () => `sample ${type}`);
+    const columns = [parseColumnString(`text:${type}`)];
+    const { rows } = await generate(columns, { rows: 1 });
+    assert.equal(rows[0][0], `sample ${type}`);
+  });
+}
+
+test('quotes a comma-containing lorem sentence in CSV output', async (t) => {
+  t.mock.method(faker.lorem, 'sentence', () => 'Hello, world.');
+  t.mock.method(faker.lorem, 'word', () => 'next');
+  const output = path.join(tmpDir, 'lorem-quoted.csv');
+  await generateCSV({
+    columns: [parseColumnString('text:sentence'), parseColumnString('word:word')],
+    rows: 1,
+    output,
+  });
+  const csv = fs.readFileSync(output, 'utf8');
+  assert.equal(csv, 'text,word\n"Hello, world.",next\n');
+});
 
 test('writes header and requested number of rows', async () => {
   const { header, rows } = await generate(
