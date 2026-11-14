@@ -314,6 +314,9 @@ npx csv-faker -c customer_number:number,title:title,firstname:firstName,lastname
 | `iban` | IBAN | `DE89370400440532013000` | ✓ | ✓ |
 | `bic` | BIC/SWIFT | `COBADEFFXXX` | ✓ | ✓ |
 | `bankName` | Bank name | `Deutsche Bank` | ✓ | ✓ |
+| `word` | Lorem word | `lorem` | ✓ | ✓ |
+| `sentence` | Lorem sentence | `Lorem ipsum dolor sit amet.` | ✓ | ✓ |
+| `paragraph` | Lorem paragraph | `Lorem ipsum dolor sit amet. Consectetur adipiscing elit.` | ✓ | ✓ |
 | `alphanumeric` | Alphanumeric string | `aB3xYz9qW` | ✓* | ✓ |
 | `pick` | Pick from array | Custom values | ✓* | ✓ |
 | `formula` | Calculated value | Based on other fields | ✗ | ✓ |
@@ -331,7 +334,7 @@ type DataType =
   | 'city' | 'country' | 'zipCode' | 'company' | 'jobTitle'
   | 'number' | 'date' | 'boolean' | 'url' | 'ip'
   | 'username' | 'password' | 'iban' | 'bic' | 'bankName'
-  | 'alphanumeric' | 'pick' | 'formula';
+  | 'word' | 'sentence' | 'paragraph' | 'alphanumeric' | 'pick' | 'formula';
 
 interface ColumnDefinition {
   header: string;

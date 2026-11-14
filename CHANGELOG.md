@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `word`, `sentence`, and `paragraph` lorem data types for CLI and programmatic use. (#29)
 - CLI support for `number` `min`/`max` bounds and `decimals` via `header:number:min|max[:decimals]` syntax, instead of silently ignoring them. (#26)
 
 ### Changed
